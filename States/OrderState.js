@@ -1,6 +1,6 @@
 export default class OrderState {
     action(actionName) {
-        console.log(`Ошибка. Нельзя ${actionName} в текущем состоянии`);
+        throw new Error(`Ошибка. Нельзя ${actionName} в текущем состоянии`);
     }
 
     pay(order, user) { this.action('оплатить'); }

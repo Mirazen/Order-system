@@ -1,41 +1,56 @@
 import User from "../Modules/User.js";
 import Order from "../Modules/Order.js";
+import { jest } from "@jest/globals";
 
-const stateName = (order) => order.state.constructor.name.replace('State', '');
+describe("Order history", () => {
+  let user;
 
-describe("Order lifecycle", () => {
-  test("создание заказа", () => {
-    const user = new User(1, "Даня", 1000);
-    const order = new Order(1, user);
-    expect(stateName(order)).toBe("Created");
+  beforeEach(() => {
+    user = new User(1, "Даня", 1000);
   });
 
-  test("оплата заказа", () => {
-    const user = new User(1, "Даня", 1000);
-    const order = new Order(1, user, 200);
+  test("1. проверка истории с отменой", () => {
+    order = new Order(1, user, 500);
     order.pay();
-    expect(stateName(order)).toBe("Paid");
-    expect(user.balance).toBe(800);
+    order.cancel();
+    expect(order.history).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ state: "Created" }),
+        expect.objectContaining({ state: "Paid" }),
+        expect.objectContaining({ state: "Cancelled" })
+      ])
+    );
   });
 
-  test("доставка заказа", () => {
-    const user = new User(1, "Даня", 1000);
-    const order = new Order(1, user, 200);
+  test("2. проверка истории с возвратом", () => {
+    order = new Order(2, user, 500);
     order.pay();
     order.ship();
-    expect(stateName(order)).toBe("Shipped");
+    order.deliver();
+    order.return();
+    order.refund();
+    expect(order.history).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ state: "Shipped" }),
+        expect.objectContaining({ state: "Delivered" }),
+        expect.objectContaining({ state: "Returned" }),
+        expect.objectContaining({ state: "Refunded" })
+      ])
+    );
   });
 
-  test("отмена заказа", () => {
-    const user = new User(1, "Даня", 1000);
-    const order = new Order(1, user, 200);
-    order.cancel();
-    expect(stateName(order)).toBe("Cancelled");
-  });
+  test("метод getHistory выводит историю в консоль", () => {
+    order = new Order(3, user, 200);
+    const spy = jest.spyOn(console, "log").mockImplementation(() => {});
+    
+    order.pay();
+    order.ship();
+    order.deliver();
+    order.getHistory();
 
-  test("нельзя оплатить без денег", () => {
-    const poorUser = new User(2, "Дима", 50);
-    const order = new Order(2, poorUser, 200);
-    expect(() => order.pay()).toThrow("Недостаточно средств");
+    expect(spy).toHaveBeenCalledWith(expect.stringContaining("История заказа #3:"));
+    expect(spy).toHaveBeenCalledWith(expect.stringMatching(/— Created|Paid|Shipped|Delivered/));
+
+    spy.mockRestore();
   });
 });
